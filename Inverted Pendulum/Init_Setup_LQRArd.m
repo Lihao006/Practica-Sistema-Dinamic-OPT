@@ -28,7 +28,7 @@ dd = (m*g*l*(M+m))/AA;
 ee = ((m*l)/AA)*(c + (kb*kt)/(Rm*(r^2)));
 ff = ((M+m)*b)/AA;
 mm = ((I+m*(l^2))*kt)/(AA*Rm*r);
-nn = (m*l*kt)/(AA*Rm*r);   % <-- corregido: era kt no t
+nn = (m*l*kt)/(AA*Rm*r); 
 
 A = [0  0   1    0;
      0  0   0    1;
@@ -42,7 +42,7 @@ C = [1 0 0 0;    % Medimos posición x
 D = zeros(2,1);
 
 % =========================================================================
-% 5. CONTROLADOR PID (para PID_pend_inv.slx)
+% 1. CONTROLADOR PID
 % =========================================================================
 
 % Función de transferencia Voltaje -> theta (salida que controla el PID)
