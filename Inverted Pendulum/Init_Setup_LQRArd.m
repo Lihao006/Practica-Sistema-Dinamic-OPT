@@ -42,14 +42,34 @@ C = [1 0 0 0;    % Medimos posición x
 D = zeros(2,1);
 
 % =========================================================================
-% 1. CONTROLABILIDAD Y OBSERVABILIDAD
+% 5. CONTROLADOR PID (para PID_pend_inv.slx)
+% =========================================================================
+
+% Función de transferencia Voltaje -> theta (salida que controla el PID)
+sys_tf  = tf(ss(A, B, C, D));
+G_theta = sys_tf(2, 1);
+
+% Sintonización PID
+[PID_theta, ~] = pidtune(G_theta, 'PID');
+
+Kp = PID_theta.Kp;
+Ki = PID_theta.Ki;
+Kd = PID_theta.Kd;
+
+fprintf('\n--- Ganancias PID ---\n');
+fprintf('Kp = %f\n', Kp);
+fprintf('Ki = %f\n', Ki);
+fprintf('Kd = %f\n', Kd);
+
+% =========================================================================
+% 2. CONTROLABILIDAD Y OBSERVABILIDAD
 % =========================================================================
 fprintf('--- Análisis del Sistema ---\n');
 fprintf('Rango Controlabilidad: %d (deseado: 4)\n', rank(ctrb(A,B)));
 fprintf('Rango Observabilidad:  %d (deseado: 4)\n', rank(obsv(A,C)));
 
 % =========================================================================
-% 2. CONTROLADOR LQR
+% 3. CONTROLADOR LQR
 % =========================================================================
 Q = diag([1200, 1500, 0, 0]);
 R = 0.035;
@@ -65,7 +85,7 @@ p4 = [-20; -15.5; -45.5; -4.8];                   % Agresivo
 k_pole = place(A, B, p3);
 
 % =========================================================================
-% 3. FILTRO DE KALMAN (LQG)
+% 4. FILTRO DE KALMAN (LQG)
 % =========================================================================
 % G: el ruido de proceso entra por las aceleraciones (estados 3 y 4)
 G = [0 0;
@@ -89,7 +109,7 @@ fprintf('--- Ganancia Kalman L ---\n');
 disp(L)
 
 % =========================================================================
-% 4. PREALIMENTACIÓN Nbar (CASOS LIBRES)
+% 5. PREALIMENTACIÓN Nbar (CASOS LIBRES)
 % =========================================================================
 % Caso 1: referencia de posición
 Nbar_pos = -1 / ([1 0 0 0] * ((A - B*KK) \ B));
