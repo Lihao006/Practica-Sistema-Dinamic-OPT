@@ -51,6 +51,12 @@ fprintf('--- Análisis del Sistema ---\n');
 fprintf('Rango Controlabilidad: %d (deseado: 4)\n', rank(ctrb(A,B)));
 fprintf('Rango Observabilidad: %d (deseado: 4)\n', rank(obsv(A,C_lqr)));
 
+% Verificación de controlabilidad y observabilidad
+if rank(ctrb(A,B)) == 4 && rank(obsv(A,C_lqr)) == 4
+    fprintf('El sistema es completamente controlable y observable.\n');
+else
+    fprintf('El sistema NO es completamente controlable u observable.\n');
+end
 fprintf('Rango Observabilidad (C 2x4): %d (deseado: 4)\n', rank(obsv(A,C_lqg)));
 
 % =========================================================================
