@@ -59,6 +59,22 @@ fprintf('Rango Observabilidad (C 2x4): %d (deseado: 4)\n', rank(obsv(A,C_lqg)));
 % Función de transferencia Voltaje -> theta usando C_lqg
 sys_tf  = tf(ss(A, B, C_lqg, D_lqg));
 G_theta = sys_tf(2, 1);  % Canal Voltaje -> theta
+function y = fcn(u)
+    y = mod(u * 180/pi, 360);
+end
+
+% PID externo - controla posición x
+G_x = sys_tf(1, 1);
+opts_x = pidtuneOptions('CrossoverFrequency', 3, 'PhaseMargin', 60);  % añadir esta línea
+[PID_x, ~] = pidtune(G_x, 'PID', opts_x);
+Kp_x = PID_x.Kp;
+Ki_x = PID_x.Ki;
+Kd_x = PID_x.Kd;
+
+fprintf('\n--- Ganancias PID posición x ---\n');
+fprintf('Kp_x = %f\n', Kp_x);
+fprintf('Ki_x = %f\n', Ki_x);
+fprintf('Kd_x = %f\n', Kd_x);
 
 [PID_theta, ~] = pidtune(G_theta, 'PID');
 Kp = PID_theta.Kp;
@@ -68,6 +84,7 @@ fprintf('\n--- Ganancias PID ---\n');
 fprintf('Kp = %f\n', Kp);
 fprintf('Ki = %f\n', Ki);
 fprintf('Kd = %f\n', Kd);
+
 
 % =========================================================================
 % 3. CONTROLADOR LQR (estado completo)
@@ -112,3 +129,18 @@ Nbar_ang = -1 / ([0 1 0 0] * ((A - B*KK) \ B));
 fprintf('\n--- Prealimentación Nbar ---\n');
 fprintf('Nbar posición: %f\n', Nbar_pos);
 fprintf('Nbar ángulo:   %f\n', Nbar_ang);
+
+% =========================================================================
+% 6. Valores propios
+% =========================================================================
+fprintf('\n--- Valores propios del sistema (lazo abierto) ---\n');
+disp(eig(A))
+
+fprintf('--- Valores propios con LQR (lazo cerrado) ---\n');
+disp(eig(A - B*KK))
+
+fprintf('--- Valores propios con Place p3 (lazo cerrado) ---\n');
+disp(eig(A - B*k_pole))
+
+fprintf('--- Valores propios del observador Kalman ---\n');
+disp(eig(A - L*C_lqg))
