@@ -113,8 +113,17 @@ G_noise = [0 0;
            1 0;
            0 1];
 
-Q_v = diag([0.05, 0.05]);   % Covarianza ruido de proceso
+% original: Q_v = diag([0.05, 0.05])
+Q_v = diag([500, 500]);   % Covarianza ruido de proceso
 R_w = diag([0.001, 0.002]); % Covarianza ruido de medida
+
+% Definir sistema para el bloque nativo
+sys_kalman = ss(A, B, C_lqg, D_lqg);
+
+% Q de 4x4 que se usa para el bloque de Kalman nativo del Simulink
+Q_kalman = G_noise * Q_v * G_noise';
+
+sys_kalman = ss(A, B, C_lqg, D_lqg);
 
 System_Noise = ss(A, [B G_noise], C_lqg, [D_lqg zeros(2,2)]);
 [~, L, ~] = kalman(System_Noise, Q_v, R_w);
