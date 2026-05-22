@@ -122,6 +122,11 @@ sys_kalman = ss(A, B, C_lqg, D_lqg);
 
 % Q de 4x4 que se usa para el bloque de Kalman nativo del Simulink
 Q_kalman = G_noise * Q_v * G_noise';
+% Q_kalman =
+% [0, 0, 0, 0]
+% [0, 0, 0, 0]
+% [0, 0, Q_v, 0]
+% [0, 0, 0, Q_v]
 
 sys_kalman = ss(A, B, C_lqg, D_lqg);
 
