@@ -117,8 +117,12 @@ G_noise = [0 0;
 Q_v = diag([500, 500]);   % Covarianza ruido de proceso
 R_w = diag([0.001, 0.002]); % Covarianza ruido de medida
 
+
+
+
 % Definir sistema para el bloque nativo
-sys_kalman = ss(A, B, C_lqg, D_lqg);
+q_x     = 1;
+q_theta = 1;
 
 % Q de 4x4 que se usa para el bloque de Kalman nativo del Simulink
 Q_kalman = G_noise * Q_v * G_noise';
@@ -127,7 +131,7 @@ Q_kalman = G_noise * Q_v * G_noise';
 % [0, 0, 0, 0]
 % [0, 0, Q_v, 0]
 % [0, 0, 0, Q_v]
-
+Q_kalman_new = diag([q_x, q_theta, 0, 0]) + G_noise * Q_v * G_noise';
 sys_kalman = ss(A, B, C_lqg, D_lqg);
 
 System_Noise = ss(A, [B G_noise], C_lqg, [D_lqg zeros(2,2)]);
@@ -160,7 +164,29 @@ fprintf('--- Valores propios del observador Kalman ---\n');
 disp(eig(A - L*C_lqg))
 
 
+% =========================================================================
+% SELECCIÓN DE CONTROLADOR
+% =========================================================================
+fprintf('=========================================\n');
+fprintf('   PÉNDULO INVERTIDO — SELECCIÓN CONTROL \n');
+fprintf('=========================================\n');
+fprintf('  [1] LQR (estado completo)              \n');
+fprintf('  [2] LQG (Kalman + LQR)                 \n');
+fprintf('=========================================\n\n');
 
+ctrl = input('Selecciona el controlador (1 o 2): ');
+
+if ctrl == 1
+    modelo_caso1 = 'IP_LQR_Design_Caso1';
+    modelo_caso2 = 'IP_LQR_Design_Caso2';
+    fprintf('✅ Controlador: LQR\n\n');
+elseif ctrl == 2
+    modelo_caso1 = 'IP_LQG_Design_Caso1';
+    modelo_caso2 = 'IP_LQG_Design_Caso2';
+    fprintf('✅ Controlador: LQG\n\n');
+else
+    error('❌ Opción no válida. Escribe 1 o 2.');
+end
 
 
 
@@ -169,13 +195,16 @@ disp(eig(A - L*C_lqg))
 % MENÚ PRINCIPAL
 % =========================================================================
 fprintf('=========================================\n');
-fprintf('   CONTROL LQR — PÉNDULO INVERTIDO      \n');
+fprintf('   CONTROL — PÉNDULO INVERTIDO           \n');
 fprintf('=========================================\n');
 fprintf('  [1] Caso 1 — Perturbaciones externas  \n');
 fprintf('  [2] Caso 2 — Robustez paramétrica (l) \n');
 fprintf('=========================================\n\n');
 
 caso = input('Selecciona el caso (1 o 2): ');
+
+assignin('base', 'modelo_caso1', modelo_caso1);
+assignin('base', 'modelo_caso2', modelo_caso2);
 
 if caso == 1
     run_caso1();
@@ -197,6 +226,7 @@ function run_caso1()
     F_valores_todos = [2, 4, 6, 8, 10, 12, 15];
     dur_empuje      = 0.2;
     t_inicio        = 3;
+    modelo = evalin('base', 'modelo_caso1'); 
 
     fprintf('¿Qué quieres simular?\n');
     fprintf('  [1] Todos los empujes incrementales (2N → 15N)\n');
@@ -251,8 +281,8 @@ function run_caso1()
     end
 
     assignin('base', 'F_perturbacion', [t_sim', F_push']);
-    set_param('IP_LQR_Design_Caso1', 'StopTime', num2str(t_stop));
-    fprintf('\n✅ F_perturbacion lista | Stop time: %ds\n', t_stop);
+    set_param(modelo, 'StopTime', num2str(t_stop));
+    fprintf('✅ F_perturbacion lista | Stop time: %ds | Modelo: %s\n', t_stop, modelo);
     fprintf('   ▶ Ahora simula en Simulink\n');
 
     % Visualización señal
@@ -279,7 +309,7 @@ function run_caso2()
     fprintf('   Robustez paramétrica                  \n');
     fprintf('   Variación de longitud del péndulo (l) \n');
     fprintf('=========================================\n\n');
-
+    modelo = evalin('base', 'modelo_caso2');
     % Parámetros fijos
     r  = 0.006;  I  = 0.0007176;  g  = 9.81;
     b  = 0.00007892;  Rm = 12.5;
@@ -393,14 +423,14 @@ function run_caso2()
             fprintf('   ⚠️  Sistema teóricamente inestable → puede divergir\n');
         end
     
-        set_param('IP_LQR_Design_Caso2', 'StopTime', num2str(t_stop_F));
+        set_param(modelo, 'StopTime', num2str(t_stop_F));
     
     else
         % Sin fuerza — señal cero
         t_stop_F = 15;
         t_sim_v  = 0:0.001:t_stop_F;
         assignin('base', 'F_perturbacion', [t_sim_v', zeros(size(t_sim_v))']);
-        set_param('IP_LQR_Design_Caso2', 'StopTime', num2str(t_stop_F));
+        set_param(modelo, 'StopTime', num2str(t_stop_F));
         fprintf('\n✅ Sin fuerza externa\n');
     end
 
@@ -410,8 +440,8 @@ function run_caso2()
     % -------------------------------------------------------------------------
     assignin('base', 'l',  l);
     assignin('base', 'KK', KK);
-    set_param('IP_LQR_Design_Caso2', 'StopTime', '15');
+    set_param(modelo, 'StopTime', '15'); 
 
-    fprintf('\n✅ l = %.2fm cargado en Simulink | Stop time: 15s\n', l);
+    fprintf('\n✅ l = %.2fm cargado en Simulink | Stop time: 15s | Modelo: %s\n', l, modelo);
     fprintf('   ▶ Ahora simula en Simulink para ver la respuesta\n');
 end
