@@ -1,7 +1,7 @@
 clear all
 clc
 % =========================================================================
-% PARÁMETROS FÍSICOS
+% PARÁMETROS FÍSICOS NOMINALES
 % =========================================================================
 r = 0.006;
 M_c = 0.135;
@@ -15,9 +15,26 @@ kt = 0.031;
 c = 0.63;
 m = 0.1;
 M = 0.136;
+% =========================================================================
+% CONFIGURACIONES INICIALES
+% =========================================================================
+% --- CONDICIONES INICIALES REALES (MUNDO FÍSICO) ---
+x0_real     = 0.4;              % Posición inicial del carro (metros)
+theta0_real = 160 * (pi/180);   % Ángulo inicial real (radianes)
+x_dot0      = 0;              % Velocidad inicial carro
+theta_dot0  = 0;              % Velocidad inicial péndulo
+
+% --- CONDICIONES INICIALES PARA EL KALMAN (VARIABLES DE DESVIACIÓN) ---
+% El Kalman necesita saber la desviación respecto a pi
+x0_kalman     = x0_real; 
+theta0_kalman = theta0_real - pi; 
+
+% Vectores listos para Simulink
+X0_planta = [x0_real; theta0_real; x_dot0; theta_dot0];
+X0_kalman = [x0_kalman; theta0_kalman; x_dot0; theta_dot0];
 
 % =========================================================================
-% MATRICES DE ESPACIO DE ESTADOS
+% MATRICES DE ESPACIO DE ESTADOS NOMINALES
 % =========================================================================
 AA = I*(M+m) + M*m*(l^2);
 aa = (((m*l)^2)*g)/AA;
@@ -35,7 +52,7 @@ A = [0  0   1    0;
      0  dd  -ee  -ff];
 B = [0; 0; mm; nn];
 
-% C e D para LQR (estado completo, como en el PDF de Jitendra)
+% C e D para LQR (estado completo)
 C_lqr = eye(4);
 D_lqr = zeros(4,1);
 
@@ -50,56 +67,44 @@ D_lqg = zeros(2,1);
 fprintf('--- Análisis del Sistema ---\n');
 fprintf('Rango Controlabilidad: %d (deseado: 4)\n', rank(ctrb(A,B)));
 fprintf('Rango Observabilidad: %d (deseado: 4)\n', rank(obsv(A,C_lqr)));
-
 fprintf('Rango Observabilidad (C 2x4): %d (deseado: 4)\n', rank(obsv(A,C_lqg)));
 
 % =========================================================================
 % 2. CONTROLADOR PID
 % =========================================================================
-% Función de transferencia Voltaje -> theta usando C_lqg
 sys_tf  = tf(ss(A, B, C_lqg, D_lqg));
-G_theta = sys_tf(2, 1);  % Canal Voltaje -> theta
-function y = fcn(u)
-    y = mod(u * 180/pi, 360);
-end
+G_theta = sys_tf(2, 1);
+G_x     = sys_tf(1, 1);
 
-% PID externo - controla posición x
-G_x = sys_tf(1, 1);
-opts_x = pidtuneOptions('CrossoverFrequency', 3, 'PhaseMargin', 60);  % añadir esta línea
+opts_x = pidtuneOptions('CrossoverFrequency', 3, 'PhaseMargin', 60);
 [PID_x, ~] = pidtune(G_x, 'PID', opts_x);
-Kp_x = PID_x.Kp;
-Ki_x = PID_x.Ki;
-Kd_x = PID_x.Kd;
-
+Kp_x = PID_x.Kp; Ki_x = PID_x.Ki; Kd_x = PID_x.Kd;
 fprintf('\n--- Ganancias PID posición x ---\n');
 fprintf('Kp_x = %f\n', Kp_x);
 fprintf('Ki_x = %f\n', Ki_x);
 fprintf('Kd_x = %f\n', Kd_x);
 
 [PID_theta, ~] = pidtune(G_theta, 'PID');
-Kp = PID_theta.Kp;
-Ki = PID_theta.Ki;
-Kd = PID_theta.Kd;
-fprintf('\n--- Ganancias PID ---\n');
+Kp = PID_theta.Kp; Ki = PID_theta.Ki; Kd = PID_theta.Kd;
+fprintf('\n--- Ganancias PID ángulo theta ---\n');
 fprintf('Kp = %f\n', Kp);
 fprintf('Ki = %f\n', Ki);
 fprintf('Kd = %f\n', Kd);
 
-
 % =========================================================================
 % 3. CONTROLADOR LQR (estado completo)
 % =========================================================================
-Q = diag([500, 1000, 0, 0]);
-R = 0.008;
+Q  = diag([500, 1000, 0, 0]);
+R  = 0.008;
 KK = lqr(A, B, Q, R);
 fprintf('\n--- Ganancia LQR ---\n');
 disp(KK)
 
 % Asignación de polos (para comparar con LQR)
-p1 = [1i*2.8; -1i*2.8; 1i*1.5; -1i*1.5];    % Oscilatorio
-p2 = [-8+1i*2; -8-1i*2; -7+1i*2; -7-1i*2];  % Subamortiguado
-p3 = [-8; -10; -4.5; -5.8];                   % Estable
-p4 = [-20; -15.5; -45.5; -4.8];               % Agresivo
+p1 = [1i*2.8; -1i*2.8; 1i*1.5; -1i*1.5];
+p2 = [-8+1i*2; -8-1i*2; -7+1i*2; -7-1i*2];
+p3 = [-8; -10; -4.5; -5.8];
+p4 = [-20; -15.5; -45.5; -4.8];
 k_pole = place(A, B, p3);
 fprintf('--- Ganancia Place (p3 estable) ---\n');
 disp(k_pole)
@@ -113,31 +118,26 @@ G_noise = [0 0;
            1 0;
            0 1];
 
-% original: Q_v = diag([0.05, 0.05])
-Q_v = diag([500, 500]);   % Covarianza ruido de proceso
-R_w = diag([0.001, 0.002]); % Covarianza ruido de medida
+Q_v = diag([500, 500]);       % Covarianza ruido de proceso (2x2)
+R_w = diag([0.001, 0.002]);   % Covarianza ruido de medida  (2x2)
 
+% --- Q para el bloque Kalman NATIVO de Simulink (G=I asumido, sin G y H) ---
+% Q efectiva = G * Q_v * G'  →  resultado 4x4
+% [0,   0,   0,   0  ]
+% [0,   0,   0,   0  ]
+% [0,   0,   500, 0  ]
+% [0,   0,   0,   500]
+Q_kalman_new = G_noise * Q_v * G_noise';   % ✅ 4x4 compatible con bloque nativo
 
-
-
-% Definir sistema para el bloque nativo
-q_x     = 1;
-q_theta = 1;
-
-% Q de 4x4 que se usa para el bloque de Kalman nativo del Simulink
-Q_kalman = G_noise * Q_v * G_noise';
-% Q_kalman =
-% [0, 0, 0, 0]
-% [0, 0, 0, 0]
-% [0, 0, Q_v, 0]
-% [0, 0, 0, Q_v]
-Q_kalman_new = diag([q_x, q_theta, 0, 0]) + G_noise * Q_v * G_noise';
-sys_kalman = ss(A, B, C_lqg, D_lqg);
-
+% --- Sistema para kalman() de MATLAB (usado en Caso 1 manual) ---
 System_Noise = ss(A, [B G_noise], C_lqg, [D_lqg zeros(2,2)]);
 [~, L, ~] = kalman(System_Noise, Q_v, R_w);
-fprintf('\n--- Ganancia Kalman L ---\n');
+fprintf('\n--- Ganancia Kalman L (4x2) ---\n');
 disp(L)
+
+% --- sys_kalman para el bloque Kalman NATIVO de Simulink (Caso 2) ---
+% El bloque nativo solo necesita A, B, C, D del sistema (sin ruido)
+sys_kalman = ss(A, B, C_lqg, D_lqg);
 
 % =========================================================================
 % 5. PREALIMENTACIÓN Nbar
@@ -149,62 +149,73 @@ fprintf('Nbar posición: %f\n', Nbar_pos);
 fprintf('Nbar ángulo:   %f\n', Nbar_ang);
 
 % =========================================================================
-% 6. Valores propios
+% 6. VALORES PROPIOS
 % =========================================================================
 fprintf('\n--- Valores propios del sistema (lazo abierto) ---\n');
 disp(eig(A))
-
 fprintf('--- Valores propios con LQR (lazo cerrado) ---\n');
 disp(eig(A - B*KK))
-
 fprintf('--- Valores propios con Place p3 (lazo cerrado) ---\n');
 disp(eig(A - B*k_pole))
-
 fprintf('--- Valores propios del observador Kalman ---\n');
 disp(eig(A - L*C_lqg))
 
+% =========================================================================
+% EXPORTAR AL WORKSPACE DE SIMULINK
+% =========================================================================
+assignin('base', 'KK',           KK);
+assignin('base', 'L',            L);
+assignin('base', 'A',            A);
+assignin('base', 'B',            B);
+assignin('base', 'sys_kalman',   sys_kalman);
+assignin('base', 'Q_kalman_new', Q_kalman_new);
+assignin('base', 'R_w',          R_w);
 
 % =========================================================================
-% SELECCIÓN DE CONTROLADOR
+% MENÚ PRINCIPAL — SELECCIÓN DE CONTROLADOR
 % =========================================================================
-fprintf('=========================================\n');
+fprintf('\n=========================================\n');
 fprintf('   PÉNDULO INVERTIDO — SELECCIÓN CONTROL \n');
 fprintf('=========================================\n');
 fprintf('  [1] LQR (estado completo)              \n');
 fprintf('  [2] LQG (Kalman + LQR)                 \n');
+fprintf('  [3] Salir                               \n');
 fprintf('=========================================\n\n');
 
-ctrl = input('Selecciona el controlador (1 o 2): ');
+ctrl = input('Selecciona el controlador (1, 2 o 3): ');
 
 if ctrl == 1
     modelo_caso1 = 'IP_LQR_Design_Caso1';
     modelo_caso2 = 'IP_LQR_Design_Caso2';
+    es_lqg = false;
     fprintf('✅ Controlador: LQR\n\n');
 elseif ctrl == 2
     modelo_caso1 = 'IP_LQG_Design_Caso1';
     modelo_caso2 = 'IP_LQG_Design_Caso2';
+    es_lqg = true;
     fprintf('✅ Controlador: LQG\n\n');
+elseif ctrl == 3
+    fprintf('👋 Saliendo. Parámetros calculados en el Workspace.\n');
+    return;
 else
-    error('❌ Opción no válida. Escribe 1 o 2.');
+    error('❌ Opción no válida. Escribe 1, 2 o 3.');
 end
 
-
-
+assignin('base', 'es_lqg',      es_lqg);
+assignin('base', 'modelo_caso1', modelo_caso1);
+assignin('base', 'modelo_caso2', modelo_caso2);
 
 % =========================================================================
-% MENÚ PRINCIPAL
+% SUBMENÚ — SELECCIÓN DE CASO
 % =========================================================================
 fprintf('=========================================\n');
-fprintf('   CONTROL — PÉNDULO INVERTIDO           \n');
+fprintf('   SELECCIÓN DE CASO DE ESTUDIO          \n');
 fprintf('=========================================\n');
 fprintf('  [1] Caso 1 — Perturbaciones externas  \n');
-fprintf('  [2] Caso 2 — Robustez paramétrica (l) \n');
+fprintf('  [2] Caso 2 — Robustez paramétrica     \n');
 fprintf('=========================================\n\n');
 
 caso = input('Selecciona el caso (1 o 2): ');
-
-assignin('base', 'modelo_caso1', modelo_caso1);
-assignin('base', 'modelo_caso2', modelo_caso2);
 
 if caso == 1
     run_caso1();
@@ -218,15 +229,18 @@ end
 % CASO 1 — PERTURBACIONES EXTERNAS
 % =========================================================================
 function run_caso1()
+    es_lqg   = evalin('base', 'es_lqg');
+    str_ctrl = 'LQR'; if es_lqg, str_ctrl = 'LQG'; end
+    modelo   = evalin('base', 'modelo_caso1');
+
     fprintf('\n=========================================\n');
-    fprintf('   CONTROL LQR — CASO 1                 \n');
+    fprintf('   CONTROL %s — CASO 1                 \n', str_ctrl);
     fprintf('   Test de robustez ante perturbaciones  \n');
     fprintf('=========================================\n\n');
 
     F_valores_todos = [2, 4, 6, 8, 10, 12, 15];
     dur_empuje      = 0.2;
     t_inicio        = 3;
-    modelo = evalin('base', 'modelo_caso1'); 
 
     fprintf('¿Qué quieres simular?\n');
     fprintf('  [1] Todos los empujes incrementales (2N → 15N)\n');
@@ -265,7 +279,7 @@ function run_caso1()
         error('❌ Opción no válida.');
     end
 
-    % Generación de la señal
+    % Generación de la señal gaussiana
     t_total = t_inicio + length(F_valores) * t_entre_empujes;
     t_sim   = 0:0.001:max(t_total, t_stop);
     F_push  = zeros(size(t_sim));
@@ -282,166 +296,169 @@ function run_caso1()
 
     assignin('base', 'F_perturbacion', [t_sim', F_push']);
     set_param(modelo, 'StopTime', num2str(t_stop));
-    fprintf('✅ F_perturbacion lista | Stop time: %ds | Modelo: %s\n', t_stop, modelo);
+
+    fprintf('\n✅ F_perturbacion lista | Stop time: %ds | Modelo: %s\n', t_stop, modelo);
     fprintf('   ▶ Ahora simula en Simulink\n');
 
-    % Visualización señal
-    figure('Name','Caso 1 — Señal de perturbación','Color','w');
+    % Visualización de la señal generada
+    figure('Name', sprintf('Caso 1 (%s) — Señal de perturbación', str_ctrl), 'Color', 'w');
     plot(t_sim, F_push, 'b', 'LineWidth', 2); hold on;
-    yline(0,'k--');
+    yline(0, 'k--');
     for i = 1:length(F_valores)
         tp = t_inicio + (i-1)*t_entre_empujes;
-        xline(tp,'r--');
+        xline(tp, 'r--');
         text(tp+0.1, F_valores(i)*0.85, sprintf('%.0fN', F_valores(i)), ...
-            'Color','r','FontSize',10,'FontWeight','bold');
+            'Color', 'r', 'FontSize', 10, 'FontWeight', 'bold');
     end
     xlabel('Tiempo (s)'); ylabel('Fuerza (N)');
-    title('Caso 1: Señal de perturbación generada');
+    title(sprintf('Caso 1 (%s): Señal de perturbación generada', str_ctrl));
     grid on;
 end
 
 % =========================================================================
-% CASO 2 — ROBUSTEZ PARAMÉTRICA
+% CASO 2 — ROBUSTEZ PARAMÉTRICA (ANÁLISIS MATRICIAL REAL)
 % =========================================================================
 function run_caso2()
+    es_lqg   = evalin('base', 'es_lqg');
+    str_ctrl = 'LQR'; if es_lqg, str_ctrl = 'LQG'; end
+    modelo   = evalin('base', 'modelo_caso2');
+    KK       = evalin('base', 'KK');
+    L_nom    = evalin('base', 'L');
+    A_nom    = evalin('base', 'A');
+    B_nom    = evalin('base', 'B');
+
     fprintf('\n=========================================\n');
-    fprintf('   CONTROL LQR — CASO 2                 \n');
-    fprintf('   Robustez paramétrica                  \n');
-    fprintf('   Variación de longitud del péndulo (l) \n');
+    fprintf('   CONTROL %s — CASO 2                 \n', str_ctrl);
+    fprintf('   Análisis de Robustez Paramétrica Real \n');
     fprintf('=========================================\n\n');
-    modelo = evalin('base', 'modelo_caso2');
-    % Parámetros fijos
+
+    % Parámetros fijos nominales
     r  = 0.006;  I  = 0.0007176;  g  = 9.81;
-    b  = 0.00007892;  Rm = 12.5;
-    kb = 0.031;  kt = 0.031;  c  = 0.63;
-    m  = 0.1;   M  = 0.136;
-    l_nominal = 0.2;
+    Rm = 12.5;   kb = 0.031;      kt = 0.031;  c = 0.63;
+    l_nom = 0.2; m_nom = 0.1; M_nom = 0.136; b_nom = 0.00007892;
+    C_nom = [1 0 0 0; 0 1 0 0];
 
-    % LQR nominal (no cambia)
-    AA   = I*(M+m) + M*m*(l_nominal^2);
-    aa   = (((m*l_nominal)^2)*g)/AA;
-    bb   = ((I+m*(l_nominal^2))/AA)*(c+(kb*kt)/(Rm*(r^2)));
-    cc_v = (b*m*l_nominal)/AA;
-    dd   = (m*g*l_nominal*(M+m))/AA;
-    ee   = ((m*l_nominal)/AA)*(c+(kb*kt)/(Rm*(r^2)));
-    ff   = ((M+m)*b)/AA;
-    mm_v = ((I+m*(l_nominal^2))*kt)/(AA*Rm*r);
-    nn   = (m*l_nominal*kt)/(AA*Rm*r);
+    % Selección del parámetro a variar
+    fprintf('¿Qué parámetro del sistema quieres alterar?\n');
+    fprintf('  [1] Longitud del péndulo (l)  [Nominal: %.2fm]\n',   l_nom);
+    fprintf('  [2] Masa del péndulo (m)      [Nominal: %.2fkg]\n',  m_nom);
+    fprintf('  [3] Masa del carro (M)        [Nominal: %.3fkg]\n',  M_nom);
+    fprintf('  [4] Fricción del carro (b)    [Nominal: %.6f Ns/m]\n', b_nom);
+    param_opc = input('Selecciona una opción (1-4): ');
 
-    A_nom = [0  0    1     0;
-             0  0    0     1;
-             0  aa  -bb   -cc_v;
-             0  dd  -ee   -ff];
-    B_nom = [0; 0; mm_v; nn];
-
-    Q  = diag([500, 1000, 0, 0]);
-    R  = 0.008;
-    KK = lqr(A_nom, B_nom, Q, R);
-    fprintf('KK diseñado con l_nominal = %.2fm (fijo)\n\n', l_nominal);
-
-    % -------------------------------------------------------------------------
-    % PREGUNTA AL USUARIO
-    % -------------------------------------------------------------------------
-    fprintf('Longitud nominal del péndulo: %.2fm\n', l_nominal);
-    fprintf('Introduce la longitud que quieres probar (en metros).\n');
-    fprintf('Ejemplos: 0.10, 0.15, 0.20, 0.30, 0.45\n\n');
-    l = input('Longitud del péndulo (m): ');
-
-    if l <= 0
-        error('❌ La longitud debe ser un valor positivo.');
+    switch param_opc
+        case 1, str_p = 'Longitud (l)';   valores_test = linspace(0.05, 0.60, 10); v_nom = l_nom;
+        case 2, str_p = 'Masa pénd. (m)'; valores_test = linspace(0.02, 0.50, 10); v_nom = m_nom;
+        case 3, str_p = 'Masa carro (M)'; valores_test = linspace(0.05, 0.60, 10); v_nom = M_nom;
+        case 4, str_p = 'Fricción (b)';   valores_test = linspace(1e-5, 5e-4, 10); v_nom = b_nom;
+        otherwise, error('❌ Opción inválida.');
     end
 
-    % -------------------------------------------------------------------------
-    % CALCULAR ESTABILIDAD CON LA LONGITUD ELEGIDA
-    % -------------------------------------------------------------------------
-    AA   = I*(M+m) + M*m*(l^2);
-    aa   = (((m*l)^2)*g)/AA;
-    bb   = ((I+m*(l^2))/AA)*(c+(kb*kt)/(Rm*(r^2)));
-    cc_v = (b*m*l)/AA;
-    dd   = (m*g*l*(M+m))/AA;
-    ee   = ((m*l)/AA)*(c+(kb*kt)/(Rm*(r^2)));
-    ff   = ((M+m)*b)/AA;
-    mm_v = ((I+m*(l^2))*kt)/(AA*Rm*r);
-    nn_v = (m*l*kt)/(AA*Rm*r);
+    % Barrido de estabilidad
+    fprintf('\n📊 EXPERIMENTO: Evaluando estabilidad real de %s...\n', str_p);
+    fprintf('-------------------------------------------------------------\n');
+    fprintf('%-15s | %-20s | %-12s\n', str_p, 'Max Real(eigs)', 'Estado');
+    fprintf('-------------------------------------------------------------\n');
 
-    A_l = [0  0    1     0;
-           0  0    0     1;
-           0  aa  -bb   -cc_v;
-           0  dd  -ee   -ff];
-    B_l = [0; 0; mm_v; nn_v];
-
-    eigs_lc = eig(A_l - B_l*KK);
-    estable = all(real(eigs_lc) < 0);
-
-    % -------------------------------------------------------------------------
-    % RESUMEN EN CONSOLA
-    % -------------------------------------------------------------------------
-    fprintf('\n=== Resultado para l = %.2fm ===\n', l);
-    fprintf('Valores propios (lazo cerrado):\n');
-    for k = 1:length(eigs_lc)
-        fprintf('  λ%d = %.4f %+.4fi\n', k, real(eigs_lc(k)), imag(eigs_lc(k)));
-    end
-    fprintf('\n');
-    if estable
-        fprintf('✅ Sistema ESTABLE con l = %.2fm\n', l);
-        if l < l_nominal
-            fprintf('   Péndulo más corto que el nominal (%.2fm)\n', l_nominal);
-        elseif l > l_nominal
-            fprintf('   Péndulo más largo que el nominal (%.2fm)\n', l_nominal);
-        else
-            fprintf('   Longitud nominal — comportamiento esperado\n');
+    for i = 1:length(valores_test)
+        l = l_nom; m = m_nom; M = M_nom; b = b_nom;
+        switch param_opc
+            case 1, l = valores_test(i);
+            case 2, m = valores_test(i);
+            case 3, M = valores_test(i);
+            case 4, b = valores_test(i);
         end
-    else
-        fprintf('❌ Sistema INESTABLE con l = %.2fm\n', l);
-        fprintf('   El LQR diseñado para l=%.2fm no puede estabilizar este péndulo.\n', l_nominal);
-    end
 
-    % -------------------------------------------------------------------------
-    % PREGUNTA FUERZA EXTERNA
-    % -------------------------------------------------------------------------
-    fprintf('\n¿Quieres aplicar una fuerza externa?\n');
-    fprintf('  [1] Sí\n');
-    fprintf('  [2] No\n');
-    opcion_F = input('Selecciona opción (1 o 2): ');
-    
-    if opcion_F == 1
-        F_val     = input('Fuerza a aplicar (N): ');
-        t_inicio  = input('En qué segundo aplicar el empuje: ');
-        dur_empuje = 0.2;
-        t_stop_F  = input('Stop time (s): ');
-    
-        t_sim_v = 0:0.001:t_stop_F;
-        sigma   = dur_empuje/4;
-        F_push  = F_val * exp(-((t_sim_v - t_inicio).^2)/(2*sigma^2));
-        assignin('base', 'F_perturbacion', [t_sim_v', F_push']);
-    
-        fprintf('\n✅ Empuje de %.0fN en t=%.0fs generado\n', F_val, t_inicio);
-    
-        if estable
-            fprintf('   Sistema teóricamente estable → debería recuperar\n');
+        % Recalcular planta real modificada
+        AA_   = I*(M+m) + M*m*(l^2);
+        aa_   = (((m*l)^2)*g)/AA_;
+        bb_v  = ((I+m*(l^2))/AA_)*(c+(kb*kt)/(Rm*(r^2)));
+        cc_v  = (b*m*l)/AA_;
+        dd_   = (m*g*l*(M+m))/AA_;
+        ee_   = ((m*l)/AA_)*(c+(kb*kt)/(Rm*(r^2)));
+        ff_   = ((M+m)*b)/AA_;
+        mm_v  = ((I+m*(l^2))*kt)/(AA_*Rm*r);
+        nn_v  = (m*l*kt)/(AA_*Rm*r);
+
+        A_real = [0 0 1 0; 0 0 0 1; 0 aa_ -bb_v -cc_v; 0 dd_ -ee_ -ff_];
+        B_real = [0; 0; mm_v; nn_v];
+        C_real = [1 0 0 0; 0 1 0 0];
+
+        if es_lqg
+            % Sistema aumentado 8x8: [planta real | estimador nominal fijo]
+            F1 = [A_real,        -B_real * KK              ];
+            F2 = [L_nom * C_real, A_nom - B_nom*KK - L_nom*C_nom];
+            eigs_total = eig([F1; F2]);
         else
-            fprintf('   ⚠️  Sistema teóricamente inestable → puede divergir\n');
+            eigs_total = eig(A_real - B_real * KK);
         end
-    
-        set_param(modelo, 'StopTime', num2str(t_stop_F));
-    
-    else
-        % Sin fuerza — señal cero
-        t_stop_F = 15;
-        t_sim_v  = 0:0.001:t_stop_F;
-        assignin('base', 'F_perturbacion', [t_sim_v', zeros(size(t_sim_v))']);
-        set_param(modelo, 'StopTime', num2str(t_stop_F));
-        fprintf('\n✅ Sin fuerza externa\n');
+
+        max_real = max(real(eigs_total));
+        status   = '✅ ESTABLE'; if max_real >= 0, status = '❌ INESTABLE'; end
+
+        marker = '';
+        if abs(valores_test(i) - v_nom) < (valores_test(2)-valores_test(1))/2
+            marker = ' ← Nominal';
+        end
+        fprintf('%-15.6f | %-20.4f | %s%s\n', valores_test(i), max_real, status, marker);
+    end
+    fprintf('-------------------------------------------------------------\n');
+
+    % Valor definitivo para simular
+    fprintf('\nIntroduce el valor exacto que deseas simular.\n');
+    v_elegido = input(sprintf('Valor para %s: ', str_p));
+    if v_elegido <= 0, error('❌ Debe ser un valor positivo.'); end
+
+    l = l_nom; m = m_nom; M = M_nom; b = b_nom;
+    switch param_opc
+        case 1, l = v_elegido;
+        case 2, m = v_elegido;
+        case 3, M = v_elegido;
+        case 4, b = v_elegido;
     end
 
+    % Verificación final de estabilidad con valor elegido
+    AA_  = I*(M+m) + M*m*(l^2);
+    aa_  = (((m*l)^2)*g)/AA_;
+    bb_v = ((I+m*(l^2))/AA_)*(c+(kb*kt)/(Rm*(r^2)));
+    cc_v = (b*m*l)/AA_;
+    dd_  = (m*g*l*(M+m))/AA_;
+    ee_  = ((m*l)/AA_)*(c+(kb*kt)/(Rm*(r^2)));
+    ff_  = ((M+m)*b)/AA_;
+    mm_v = ((I+m*(l^2))*kt)/(AA_*Rm*r);
+    nn_v = (m*l*kt)/(AA_*Rm*r);
 
-    % -------------------------------------------------------------------------
-    % ACTUALIZAR WORKSPACE Y SIMULINK
-    % -------------------------------------------------------------------------
-    assignin('base', 'l',  l);
-    assignin('base', 'KK', KK);
-    set_param(modelo, 'StopTime', '15'); 
+    A_el = [0 0 1 0; 0 0 0 1; 0 aa_ -bb_v -cc_v; 0 dd_ -ee_ -ff_];
+    B_el = [0; 0; mm_v; nn_v];
+    C_el = [1 0 0 0; 0 1 0 0];
 
-    fprintf('\n✅ l = %.2fm cargado en Simulink | Stop time: 15s | Modelo: %s\n', l, modelo);
-    fprintf('   ▶ Ahora simula en Simulink para ver la respuesta\n');
+    if es_lqg
+        F1 = [A_el,        -B_el * KK                ];
+        F2 = [L_nom * C_el, A_nom - B_nom*KK - L_nom*C_nom];
+        eigs_fin = eig([F1; F2]);
+    else
+        eigs_fin = eig(A_el - B_el * KK);
+    end
+
+    fprintf('\n=== Resultado para %s = %.4f ===\n', str_p, v_elegido);
+    if all(real(eigs_fin) < 0)
+        fprintf('✅ Sistema ESTABLE con el valor elegido\n');
+    else
+        fprintf('❌ Sistema INESTABLE con el valor elegido\n');
+    end
+
+    % Fuerza externa (cero por defecto en Caso 2)
+    t_stop_F = 15;
+    t_sim_v  = 0:0.001:t_stop_F;
+    assignin('base', 'F_perturbacion', [t_sim_v', zeros(size(t_sim_v))']);
+    set_param(modelo, 'StopTime', num2str(t_stop_F));
+
+    % Exportar parámetros modificados al Workspace
+    assignin('base', 'l', l);
+    assignin('base', 'm', m);
+    assignin('base', 'M', M);
+    assignin('base', 'b', b);
+
+    fprintf('\n✅ Parámetros %s cargados con éxito.\n', str_ctrl);
+    fprintf('   ▶ Ejecuta la simulación en Simulink: %s\n', modelo);
 end
