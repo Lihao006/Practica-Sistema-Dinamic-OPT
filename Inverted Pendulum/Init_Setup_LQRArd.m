@@ -26,12 +26,7 @@ theta_dot0  = 0;              % Velocidad inicial péndulo
 
 % --- CONDICIONES INICIALES PARA EL KALMAN (VARIABLES DE DESVIACIÓN) ---
 % El Kalman necesita saber la desviación respecto a pi
-x0_kalman     = x0_real; 
-theta0_kalman = theta0_real; 
-
-% Vectores listos para Simulink
-X0_planta = [x0_real; theta0_real; x_dot0; theta_dot0];
-X0_kalman = [x0_kalman; theta0_kalman; x_dot0; theta_dot0];
+X0_kalman = [x0_real; theta0_real; x_dot0; theta_dot0];
 
 % =========================================================================
 % MATRICES DE ESPACIO DE ESTADOS NOMINALES
@@ -94,8 +89,8 @@ fprintf('Kd = %f\n', Kd);
 % =========================================================================
 % 3. CONTROLADOR LQR (estado completo)
 % =========================================================================
-Q  = diag([2000, 1000, 0, 0]);
-R  = 0.032;
+Q  = diag([500, 1000, 0, 0]);
+R  = 0.008;
 KK = lqr(A, B, Q, R);
 fprintf('\n--- Ganancia LQR ---\n');
 disp(KK)
@@ -118,16 +113,19 @@ G_noise = [0 0;
            1 0;
            0 1];
 
-Q_v = diag([500, 500]);       % Covarianza ruido de proceso (2x2)
-R_w = diag([0.001, 0.002]);   % Covarianza ruido de medida  (2x2)
+G_noise = [0 0;
+           0 0;
+           1 0;
+           0 1];
 
-% --- Q para el bloque Kalman NATIVO de Simulink (G=I asumido, sin G y H) ---
-% Q efectiva = G * Q_v * G'  →  resultado 4x4
-% [0,   0,   0,   0  ]
-% [0,   0,   0,   0  ]
-% [0,   0,   500, 0  ]
-% [0,   0,   0,   500]
-Q_kalman_new = G_noise * Q_v * G_noise';   % ✅ 4x4 compatible con bloque nativo
+ruido_actuador = 0.001;
+ruido_sensor = 0.00001;
+
+Q_v = diag([500, 500]);       % Covarianza ruido de proceso (2x2)
+R_w = diag([1e-4, 1e-4]);     % Covarianza ruido de medida  (2x2)
+Q_kalman_new = G_noise * Q_v * G_noise';   
+
+
 
 % --- Sistema para kalman() de MATLAB (usado en Caso 1 manual) ---
 System_Noise = ss(A, [B G_noise], C_lqg, [D_lqg zeros(2,2)]);
