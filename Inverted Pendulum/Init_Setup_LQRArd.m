@@ -27,7 +27,7 @@ theta_dot0  = 0;              % Velocidad inicial péndulo
 % --- CONDICIONES INICIALES PARA EL KALMAN (VARIABLES DE DESVIACIÓN) ---
 % El Kalman necesita saber la desviación respecto a pi
 x0_kalman     = x0_real; 
-theta0_kalman = theta0_real - pi; 
+theta0_kalman = theta0_real; 
 
 % Vectores listos para Simulink
 X0_planta = [x0_real; theta0_real; x_dot0; theta_dot0];
@@ -94,8 +94,8 @@ fprintf('Kd = %f\n', Kd);
 % =========================================================================
 % 3. CONTROLADOR LQR (estado completo)
 % =========================================================================
-Q  = diag([500, 1000, 0, 0]);
-R  = 0.008;
+Q  = diag([2000, 1000, 0, 0]);
+R  = 0.032;
 KK = lqr(A, B, Q, R);
 fprintf('\n--- Ganancia LQR ---\n');
 disp(KK)
