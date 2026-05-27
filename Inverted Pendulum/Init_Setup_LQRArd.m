@@ -184,7 +184,7 @@ ctrl = input('Selecciona el controlador (1, 2 o 3): ');
 
 if ctrl == 1
     modelo_caso1 = 'IP_LQR_Design_Caso1';
-    modelo_caso2 = 'IP_LQR_Design_Caso2';
+    modelo_caso2 = 'IP_LQR_Design_Caso2_Lihao';
     es_lqg = false;
     fprintf('✅ Controlador: LQR\n\n');
 elseif ctrl == 2
@@ -341,11 +341,11 @@ function run_caso2()
     fprintf('  [1] Longitud del péndulo (l)  [Nominal: %.2fm]\n',   l_nom);
     fprintf('  [2] Masa del péndulo (m)      [Nominal: %.2fkg]\n',  m_nom);
     fprintf('  [3] Masa del carro (M)        [Nominal: %.3fkg]\n',  M_nom);
-    fprintf('  [4] Fricción del suelo (b)    [Nominal: %.6f Ns/m]\n', b_nom);
+    fprintf('  [4] Fricción del carro (b)    [Nominal: %.6f Ns/m]\n', b_nom);
     param_opc = input('Selecciona una opción (1-4): ');
 
     switch param_opc
-        case 1, str_p = 'Longitud (l)';   valores_test = linspace(0.05, 0.60, 10); v_nom = l_nom;
+        case 1, str_p = 'Longitud (l)'; valores_test = unique([linspace(0.05, 0.60, 10), l_nom]); v_nom = l_nom;
         case 2, str_p = 'Masa pénd. (m)'; valores_test = linspace(0.02, 0.50, 10); v_nom = m_nom;
         case 3, str_p = 'Masa carro (M)'; valores_test = linspace(0.05, 0.60, 10); v_nom = M_nom;
         case 4, str_p = 'Fricción (b)';   valores_test = linspace(1e-5, 5e-4, 10); v_nom = b_nom;
