@@ -341,7 +341,7 @@ function run_caso2()
     fprintf('  [1] Longitud del péndulo (l)  [Nominal: %.2fm]\n',   l_nom);
     fprintf('  [2] Masa del péndulo (m)      [Nominal: %.2fkg]\n',  m_nom);
     fprintf('  [3] Masa del carro (M)        [Nominal: %.3fkg]\n',  M_nom);
-    fprintf('  [4] Fricción del carro (b)    [Nominal: %.6f Ns/m]\n', b_nom);
+    fprintf('  [4] Fricción del suelo (b)    [Nominal: %.6f Ns/m]\n', b_nom);
     param_opc = input('Selecciona una opción (1-4): ');
 
     switch param_opc
