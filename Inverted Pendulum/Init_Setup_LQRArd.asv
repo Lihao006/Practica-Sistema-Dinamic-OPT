@@ -3,23 +3,23 @@ clc
 % =========================================================================
 % PARÁMETROS FÍSICOS NOMINALES
 % =========================================================================
-r = 0.006;
+m = 0.1;
 M_c = 0.135;
-I = 0.0007176;
 l = 0.2;
+I = 0.0007176;
+M = 0.136;
 g = 9.81;
+c = 0.63;
 b = 0.00007892;
-Rm = 12.5;
 kb = 0.031;
 kt = 0.031;
-c = 0.63;
-m = 0.1;
-M = 0.136;
+Rm = 12.5;
+r = 0.006;
 % =========================================================================
 % CONFIGURACIONES INICIALES
 % =========================================================================
 % --- CONDICIONES INICIALES REALES (MUNDO FÍSICO) ---
-x0_real     = 0.4;              % Posición inicial del carro (metros)
+x0_real     = 0.2;              % Posición inicial del carro (metros)
 theta0_real = 160 * (pi/180);   % Ángulo inicial real (radianes)
 x_dot0      = 0;              % Velocidad inicial carro
 theta_dot0  = 0;              % Velocidad inicial péndulo
@@ -48,11 +48,11 @@ A = [0  0   1    0;
 B = [0; 0; mm; nn];
 
 % C e D para LQR (estado completo)
-C_lqr = eye(4);
+C_lqr = eye(4);        % conocemos los cuatro estados
 D_lqr = zeros(4,1);
 
 % C e D para LQG (solo medimos x y theta)
-C_lqg = [1 0 0 0;
+C_lqg = [1 0 0 0;      % solo medimos 
          0 1 0 0];
 D_lqg = zeros(2,1);
 
@@ -113,10 +113,19 @@ G_noise = [0 0;
            1 0;
            0 1];
 
-ruido_actuador = 0.001
-Q_v = diag([ruido_ac, ruido_actuador]);       % Covarianza ruido de proceso (2x2)
-R_w = diag([0.00001, 0.00001]);   % Covarianza ruido de medida  (2x2)
-Q_kalman_new = G_noise * Q_v * G_noise';   % ✅ 4x4 compatible con bloque nativo
+G_noise = [0 0;
+           0 0;
+           1 0;
+           0 1];
+
+ruido_actuador = 0.001;
+ruido_sensor = 0.00001;
+
+Q_v = diag([500, 500]);       % Covarianza ruido de proceso (2x2)
+R_w = diag([1e-4, 1e-4]);     % Covarianza ruido de medida  (2x2)
+Q_kalman_new = G_noise * Q_v * G_noise';   
+
+
 
 % --- Sistema para kalman() de MATLAB (usado en Caso 1 manual) ---
 System_Noise = ss(A, [B G_noise], C_lqg, [D_lqg zeros(2,2)]);
@@ -332,7 +341,7 @@ function run_caso2()
     fprintf('  [1] Longitud del péndulo (l)  [Nominal: %.2fm]\n',   l_nom);
     fprintf('  [2] Masa del péndulo (m)      [Nominal: %.2fkg]\n',  m_nom);
     fprintf('  [3] Masa del carro (M)        [Nominal: %.3fkg]\n',  M_nom);
-    fprintf('  [4] Fricción del carro (b)    [Nominal: %.6f Ns/m]\n', b_nom);
+    fprintf('  [4] Fricción del suelo (b)    [Nominal: %.6f Ns/m]\n', b_nom);
     param_opc = input('Selecciona una opción (1-4): ');
 
     switch param_opc
