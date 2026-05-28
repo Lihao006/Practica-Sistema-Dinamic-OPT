@@ -3,23 +3,23 @@ clc
 % =========================================================================
 % PARÁMETROS FÍSICOS NOMINALES
 % =========================================================================
-r = 0.006;
+m = 0.1;
 M_c = 0.135;
-I = 0.0007176;
 l = 0.2;
+I = 0.0007176;
+M = 0.136;
 g = 9.81;
+c = 0.63;
 b = 0.00007892;
-Rm = 12.5;
 kb = 0.031;
 kt = 0.031;
-c = 0.63;
-m = 0.1;
-M = 0.136;
+Rm = 12.5;
+r = 0.006;
 % =========================================================================
 % CONFIGURACIONES INICIALES
 % =========================================================================
 % --- CONDICIONES INICIALES REALES (MUNDO FÍSICO) ---
-x0_real     = 0.4;              % Posición inicial del carro (metros)
+x0_real     = 0.2;              % Posición inicial del carro (metros)
 theta0_real = 160 * (pi/180);   % Ángulo inicial real (radianes)
 x_dot0      = 0;              % Velocidad inicial carro
 theta_dot0  = 0;              % Velocidad inicial péndulo
@@ -48,11 +48,14 @@ A = [0  0   1    0;
 B = [0; 0; mm; nn];
 
 % C e D para LQR (estado completo)
-C_lqr = eye(4);
+C_lqr = eye(4);        % conocemos los cuatro estados
 D_lqr = zeros(4,1);
 
 % C e D para LQG (solo medimos x y theta)
-C_lqg = [1 0 0 0;
+% Solo medimos los estados de la posición y del ángulo. También sería
+% correcto si se utilizara la 'y' que contiene la x, theta y las
+% velocidades; no obstante, se debería de utilizar la matriz Id_4 (eye(4))
+C_lqg = [1 0 0 0;      
          0 1 0 0];
 D_lqg = zeros(2,1);
 
@@ -108,11 +111,6 @@ disp(k_pole)
 % 4. FILTRO DE KALMAN para LQG
 % =========================================================================
 % Ruido de proceso entra por las aceleraciones (estados 3 y 4)
-G_noise = [0 0;
-           0 0;
-           1 0;
-           0 1];
-
 G_noise = [0 0;
            0 0;
            1 0;
