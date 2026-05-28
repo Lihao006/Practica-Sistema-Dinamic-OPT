@@ -94,9 +94,9 @@ fprintf('Kd = %f\n', Kd);
 % =========================================================================
 Q  = diag([500, 1000, 0, 0]);
 R  = 0.008;
-KK = lqr(A, B, Q, R);
+K = lqr(A, B, Q, R);
 fprintf('\n--- Ganancia LQR ---\n');
-disp(KK)
+disp(K)
 
 % Asignación de polos (para comparar con LQR)
 p1 = [1i*2.8; -1i*2.8; 1i*1.5; -1i*1.5];
@@ -138,8 +138,8 @@ sys_kalman = ss(A, B, C_lqg, D_lqg);
 % =========================================================================
 % 5. PREALIMENTACIÓN Nbar
 % =========================================================================
-Nbar_pos = -1 / ([1 0 0 0] * ((A - B*KK) \ B));
-Nbar_ang = -1 / ([0 1 0 0] * ((A - B*KK) \ B));
+Nbar_pos = -1 / ([1 0 0 0] * ((A - B*K) \ B));
+Nbar_ang = -1 / ([0 1 0 0] * ((A - B*K) \ B));
 fprintf('\n--- Prealimentación Nbar ---\n');
 fprintf('Nbar posición: %f\n', Nbar_pos);
 fprintf('Nbar ángulo:   %f\n', Nbar_ang);
@@ -150,7 +150,7 @@ fprintf('Nbar ángulo:   %f\n', Nbar_ang);
 fprintf('\n--- Valores propios del sistema (lazo abierto) ---\n');
 disp(eig(A))
 fprintf('--- Valores propios con LQR (lazo cerrado) ---\n');
-disp(eig(A - B*KK))
+disp(eig(A - B*K))
 fprintf('--- Valores propios con Place p3 (lazo cerrado) ---\n');
 disp(eig(A - B*k_pole))
 fprintf('--- Valores propios del observador Kalman ---\n');
@@ -159,7 +159,7 @@ disp(eig(A - L*C_lqg))
 % =========================================================================
 % EXPORTAR AL WORKSPACE DE SIMULINK
 % =========================================================================
-assignin('base', 'KK',           KK);
+assignin('base', 'K',           K);
 assignin('base', 'L',            L);
 assignin('base', 'A',            A);
 assignin('base', 'B',            B);
@@ -318,7 +318,7 @@ function run_caso2()
     es_lqg   = evalin('base', 'es_lqg');
     str_ctrl = 'LQR'; if es_lqg, str_ctrl = 'LQG'; end
     modelo   = evalin('base', 'modelo_caso2');
-    KK       = evalin('base', 'KK');
+    K       = evalin('base', 'K');
     L_nom    = evalin('base', 'L');
     A_nom    = evalin('base', 'A');
     B_nom    = evalin('base', 'B');
@@ -382,11 +382,11 @@ function run_caso2()
 
         if es_lqg
             % Sistema aumentado 8x8: [planta real | estimador nominal fijo]
-            F1 = [A_real,        -B_real * KK              ];
-            F2 = [L_nom * C_real, A_nom - B_nom*KK - L_nom*C_nom];
+            F1 = [A_real,        -B_real * K              ];
+            F2 = [L_nom * C_real, A_nom - B_nom*K - L_nom*C_nom];
             eigs_total = eig([F1; F2]);
         else
-            eigs_total = eig(A_real - B_real * KK);
+            eigs_total = eig(A_real - B_real * K);
         end
 
         max_real = max(real(eigs_total));
@@ -429,11 +429,11 @@ function run_caso2()
     C_el = [1 0 0 0; 0 1 0 0];
 
     if es_lqg
-        F1 = [A_el,        -B_el * KK                ];
-        F2 = [L_nom * C_el, A_nom - B_nom*KK - L_nom*C_nom];
+        F1 = [A_el,        -B_el * K                ];
+        F2 = [L_nom * C_el, A_nom - B_nom*K - L_nom*C_nom];
         eigs_fin = eig([F1; F2]);
     else
-        eigs_fin = eig(A_el - B_el * KK);
+        eigs_fin = eig(A_el - B_el * K);
     end
 
     fprintf('\n=== Resultado para %s = %.4f ===\n', str_p, v_elegido);
