@@ -182,7 +182,7 @@ ctrl = input('Selecciona el controlador (1, 2 o 3): ');
 
 if ctrl == 1
     modelo_caso1 = 'IP_LQR_Design_Caso1';
-    modelo_caso2 = 'IP_LQR_Design_Caso2_Lihao';
+    modelo_caso2 = 'IP_LQR_Design_Caso2';
     es_lqg = false;
     fprintf('✅ Controlador: LQR\n\n');
 elseif ctrl == 2
@@ -339,14 +339,12 @@ function run_caso2()
     fprintf('  [1] Longitud del péndulo (l)  [Nominal: %.2fm]\n',   l_nom);
     fprintf('  [2] Masa del péndulo (m)      [Nominal: %.2fkg]\n',  m_nom);
     fprintf('  [3] Masa del carro (M)        [Nominal: %.3fkg]\n',  M_nom);
-    fprintf('  [4] Fricción del carro (b)    [Nominal: %.6f Ns/m]\n', b_nom);
-    param_opc = input('Selecciona una opción (1-4): ');
+    param_opc = input('Selecciona una opción (1-3): ');
 
     switch param_opc
         case 1, str_p = 'Longitud (l)'; valores_test = unique([linspace(0.05, 0.60, 10), l_nom]); v_nom = l_nom;
         case 2, str_p = 'Masa pénd. (m)'; valores_test = linspace(0.02, 0.50, 10); v_nom = m_nom;
         case 3, str_p = 'Masa carro (M)'; valores_test = linspace(0.05, 0.60, 10); v_nom = M_nom;
-        case 4, str_p = 'Fricción (b)';   valores_test = linspace(1e-5, 5e-4, 10); v_nom = b_nom;
         otherwise, error('❌ Opción inválida.');
     end
 
@@ -362,7 +360,6 @@ function run_caso2()
             case 1, l = valores_test(i);
             case 2, m = valores_test(i);
             case 3, M = valores_test(i);
-            case 4, b = valores_test(i);
         end
 
         % Recalcular planta real modificada
@@ -393,7 +390,7 @@ function run_caso2()
         status   = '✅ ESTABLE'; if max_real >= 0, status = '❌ INESTABLE'; end
 
         marker = '';
-        if abs(valores_test(i) - v_nom) < (valores_test(2)-valores_test(1))/2
+        if abs(valores_test(i) - v_nom) < 1e-9
             marker = ' ← Nominal';
         end
         fprintf('%-15.6f | %-20.4f | %s%s\n', valores_test(i), max_real, status, marker);
@@ -410,7 +407,6 @@ function run_caso2()
         case 1, l = v_elegido;
         case 2, m = v_elegido;
         case 3, M = v_elegido;
-        case 4, b = v_elegido;
     end
 
     % Verificación final de estabilidad con valor elegido
@@ -444,7 +440,7 @@ function run_caso2()
     end
 
     % Fuerza externa (cero por defecto en Caso 2)
-    t_stop_F = 15;
+    t_stop_F = 5;
     t_sim_v  = 0:0.001:t_stop_F;
     assignin('base', 'F_perturbacion', [t_sim_v', zeros(size(t_sim_v))']);
     set_param(modelo, 'StopTime', num2str(t_stop_F));
@@ -453,8 +449,7 @@ function run_caso2()
     assignin('base', 'l', l);
     assignin('base', 'm', m);
     assignin('base', 'M', M);
-    assignin('base', 'b', b);
-
+   
     fprintf('\n✅ Parámetros %s cargados con éxito.\n', str_ctrl);
     fprintf('   ▶ Ejecuta la simulación en Simulink: %s\n', modelo);
 end
