@@ -121,7 +121,7 @@ ruido_sensor = 0.00001;
 
 Q_v = diag([500, 500]);       % Covarianza ruido de proceso (2x2)
 R_w = diag([1e-4, 1e-4]);     % Covarianza ruido de medida  (2x2)
-Q_kalman_new = G_noise * Q_v * G_noise';   
+%Q_kalman_new = G_noise * Q_v * G_noise';   
 
 
 
@@ -164,7 +164,7 @@ assignin('base', 'L',            L);
 assignin('base', 'A',            A);
 assignin('base', 'B',            B);
 assignin('base', 'sys_kalman',   sys_kalman);
-assignin('base', 'Q_kalman_new', Q_kalman_new);
+%assignin('base', 'Q_kalman_new', Q_kalman_new);
 assignin('base', 'R_w',          R_w);
 
 % =========================================================================
