@@ -26,7 +26,7 @@ theta_dot0  = 0;              % Velocidad inicial péndulo
 
 % --- CONDICIONES INICIALES PARA EL KALMAN (VARIABLES DE DESVIACIÓN) ---
 % El Kalman necesita saber la desviación respecto a pi
-X0_kalman = [x0_real; theta0_real; x_dot0; theta_dot0];
+X0_kalman = [x0_real; theta0_real - pi; x_dot0; theta_dot0];
 
 % =========================================================================
 % MATRICES DE ESPACIO DE ESTADOS NOMINALES
@@ -106,35 +106,39 @@ p4 = [-20; -15.5; -45.5; -4.8];
 k_pole = place(A, B, p3);
 fprintf('--- Ganancia Place (p3 estable) ---\n');
 disp(k_pole)
-
 % =========================================================================
 % 4. FILTRO DE KALMAN para LQG
 % =========================================================================
-% Ruido de proceso entra por las aceleraciones (estados 3 y 4)
+% =========================================================================
+% 4. FILTRO DE KALMAN para LQG
+% =========================================================================
 G_noise = [0 0;
            0 0;
            1 0;
            0 1];
 
-% Covarianza ruido de proceso (2x2)
-Q_v = diag([400, 400]);
-% Covarianza ruido de medida  (2x2)
-R_w = diag([0.1, 0.1]);
+% Parámetros de ruido
+Ts = 0.01;
 
-%Q_kalman_new = G_noise * Q_v * G_noise';   
+% Varianzas (2% del rango operacional)
+sigma2_x     = (0.02 * 0.5)^2;   % = 1e-4   m²
+sigma2_theta = (0.02 * 0.87)^2;  % = 2.89e-4 rad²
+sigma2_F     = (0.01 * 12)^2;    % 1% del rango
 
+% Covarianza ruido de medida (2x2)
+R_w = diag([sigma2_x, sigma2_theta]);
 
+% Covarianza ruido de proceso (2x2) via densidad espectral
+Q_v = diag([sigma2_F / Ts, sigma2_F / Ts]);  % 2x2
 
-% --- Sistema para kalman() de MATLAB (usado en Caso 1 manual) ---
+% --- Sistema para kalman() con G_noise explícito ---
 System_Noise = ss(A, [B G_noise], C_lqg, [D_lqg zeros(2,2)]);
 [~, L, ~] = kalman(System_Noise, Q_v, R_w);
 fprintf('\n--- Ganancia Kalman L (4x2) ---\n');
 disp(L)
 
-% --- sys_kalman para el bloque Kalman NATIVO de Simulink (Caso 2) ---
-% El bloque nativo solo necesita A, B, C, D del sistema (sin ruido)
+% --- sys_kalman para bloque nativo Simulink ---
 sys_kalman = ss(A, B, C_lqg, D_lqg);
-
 
 % =========================================================================
 % 5. PREALIMENTACIÓN Nbar
