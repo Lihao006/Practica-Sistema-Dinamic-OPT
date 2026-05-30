@@ -92,7 +92,7 @@ fprintf('Kd = %f\n', Kd);
 % =========================================================================
 % 3. CONTROLADOR LQR (estado completo)
 % =========================================================================
-Q  = diag([500, 1000, 0, 0]);
+Q = diag([500, 1000, 0, 0]);
 R  = 0.008;
 K = lqr(A, B, Q, R);
 fprintf('\n--- Ganancia LQR ---\n');
@@ -116,11 +116,11 @@ G_noise = [0 0;
            1 0;
            0 1];
 
-ruido_actuador = 0.001;
-ruido_sensor = 0.00001;
+% Covarianza ruido de proceso (2x2)
+Q_v = diag([400, 400]);
+% Covarianza ruido de medida  (2x2)
+R_w = diag([0.1, 0.1]);
 
-Q_v = diag([500, 500]);       % Covarianza ruido de proceso (2x2)
-R_w = diag([1e-4, 1e-4]);     % Covarianza ruido de medida  (2x2)
 %Q_kalman_new = G_noise * Q_v * G_noise';   
 
 
@@ -134,6 +134,7 @@ disp(L)
 % --- sys_kalman para el bloque Kalman NATIVO de Simulink (Caso 2) ---
 % El bloque nativo solo necesita A, B, C, D del sistema (sin ruido)
 sys_kalman = ss(A, B, C_lqg, D_lqg);
+
 
 % =========================================================================
 % 5. PREALIMENTACIÓN Nbar
