@@ -118,9 +118,9 @@ G_noise = [0 0;
 Ts = 0.01;
 
 % Varianzas (2% del rango operacional)
-sigma2_x     = (0.02 * 0.4)^2;
-sigma2_theta = (0.02 * 0.628)^2;  
-sigma2_F     = (0.02 * 12)^2;    
+sigma2_x     = (0.02 * 0.4)^2;   % = 1e-4   m²
+sigma2_theta = (0.02 * 0.628)^2;  % = 2.89e-4 rad²
+sigma2_F     = (0.02 * 12)^2;    % 2% del rango
 
 % Covarianza ruido de medida (2x2)
 R_w = diag([sigma2_x, sigma2_theta]);
