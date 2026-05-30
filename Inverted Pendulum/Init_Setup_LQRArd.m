@@ -136,6 +136,13 @@ disp(L)
 
 % --- sys_kalman para bloque nativo Simulink ---
 sys_kalman = ss(A, B, C_lqg, D_lqg);
+Q_kalman = G_noise * Q_v * G_noise';
+
+% Resultado:
+% [0,   0,   0,   0  ]
+% [0,   0,   0,   0  ]
+% [0,   0,   Q_v(1), 0  ]
+% [0,   0,   0,   Q_v(2)]
 
 % =========================================================================
 % 5. PREALIMENTACIÓN Nbar
@@ -166,7 +173,7 @@ assignin('base', 'L',            L);
 assignin('base', 'A',            A);
 assignin('base', 'B',            B);
 assignin('base', 'sys_kalman',   sys_kalman);
-%assignin('base', 'Q_kalman_new', Q_kalman_new);
+assignin('base', 'Q_kalman', Q_kalman);
 assignin('base', 'R_w',          R_w);
 
 % =========================================================================
