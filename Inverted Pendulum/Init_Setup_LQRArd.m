@@ -93,7 +93,7 @@ fprintf('Kd = %f\n', Kd);
 % 3. CONTROLADOR LQR (estado completo)
 % =========================================================================
 Q = diag([500, 1000, 0, 0]);
-R  = 0.008;
+R  = 0.1;
 K = lqr(A, B, Q, R);
 fprintf('\n--- Ganancia LQR ---\n');
 disp(K)
