@@ -19,15 +19,21 @@ r = 0.006;
 % CONFIGURACIONES INICIALES
 % =========================================================================
 % --- CONDICIONES INICIALES REALES (MUNDO FÍSICO) ---
-x0_real     = 0.2;              % Posición inicial del carro (metros)
-theta0_real = 160 * (pi/180);   % Ángulo inicial real (radianes)
+x0     = 0.2;              % Posición inicial del carro (metros)
+theta0 = 160 * (pi/180);   % Ángulo inicial real (radianes)
 x_dot0      = 0;              % Velocidad inicial carro
 theta_dot0  = 0;              % Velocidad inicial péndulo
 
 % --- CONDICIONES INICIALES PARA EL KALMAN (VARIABLES DE DESVIACIÓN) ---
 % El Kalman necesita saber la desviación respecto a pi
-X0_kalman = [x0_real; theta0_real - pi; x_dot0; theta_dot0];
+X0_kalman = [x0; theta0 - pi; x_dot0; theta_dot0];
 
+
+% --- ESTADO DESEADO (REFERENCIA) ---
+x_ref       = 0;              % Posición deseada del carro [m]
+theta_ref   = 180*(pi/180);   % Ángulo deseado del péndulo [rad]
+xdot_ref    = 0;              % Velocidad lineal deseada [m/s]
+thetadot_ref = 0;             % Velocidad angular deseada [rad/s]
 % =========================================================================
 % MATRICES DE ESPACIO DE ESTADOS NOMINALES
 % =========================================================================
@@ -93,7 +99,7 @@ fprintf('Kd = %f\n', Kd);
 % 3. CONTROLADOR LQR (estado completo)
 % =========================================================================
 Q = diag([500, 1000, 0, 0]);
-R  = 0.1;
+R  = 0.008;
 K = lqr(A, B, Q, R);
 fprintf('\n--- Ganancia LQR ---\n');
 disp(K)
