@@ -448,6 +448,8 @@ function run_caso2()
     end
 
     fprintf('\n=== Resultado para %s = %.4f ===\n', str_p, v_elegido);
+    max_real = max(real(eigs_fin));
+    fprintf('Max Real(eigs) %.4f \n', max_real);
     if all(real(eigs_fin) < 0)
         fprintf('✅ Sistema ESTABLE con el valor elegido\n');
     else
