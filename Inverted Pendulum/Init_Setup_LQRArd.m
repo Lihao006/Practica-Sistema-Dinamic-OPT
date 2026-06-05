@@ -151,16 +151,7 @@ Q_kalman = G_noise * Q_v * G_noise';
 % [0,   0,   0,   Q_v(2)]
 
 % =========================================================================
-% 5. PREALIMENTACIÓN Nbar
-% =========================================================================
-Nbar_pos = -1 / ([1 0 0 0] * ((A - B*K) \ B));
-Nbar_ang = -1 / ([0 1 0 0] * ((A - B*K) \ B));
-fprintf('\n--- Prealimentación Nbar ---\n');
-fprintf('Nbar posición: %f\n', Nbar_pos);
-fprintf('Nbar ángulo:   %f\n', Nbar_ang);
-
-% =========================================================================
-% 6. VALORES PROPIOS
+% 5. VALORES PROPIOS
 % =========================================================================
 fprintf('\n--- Valores propios del sistema (lazo abierto) ---\n');
 disp(eig(A))
